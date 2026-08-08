@@ -1,0 +1,72 @@
+# 主題輪動儀表板更新 + 部署
+# 觸發方式：只有「更新資料」按鈕（workflow_dispatch），無排程。
+# 流程：checkout（含 committed 快取）→ 只抓缺口更新快取 → 算分數寫 JSON →
+#       快取 commit 回 repo → build React → deploy GitHub Pages。
+name: update-dashboard
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: dashboard
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-dashboard.txt
+
+      - name: Install Python deps
+        run: pip install -r requirements-dashboard.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install JS deps
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Export dashboard data (gap-fetch from committed cache)
+        run: python export_dashboard.py
+
+      - name: Commit updated data (cache + dashboard JSON) back to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet data_cache data_cache_intraday dashboard/public/data; then
+            echo "資料無變更，跳過 commit"
+          else
+            git add data_cache data_cache_intraday dashboard/public/data
+            git commit -m "chore: update dashboard data [skip ci]"
+            git push
+          fi
+
+      - name: Build frontend
+        working-directory: dashboard
+        env:
+          VITE_UPDATE_URL: ${{ secrets.VITE_UPDATE_URL }}
+          VITE_ACTIONS_URL: ${{ secrets.VITE_ACTIONS_URL }}
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/dist
+
+      - uses: actions/deploy-pages@v4

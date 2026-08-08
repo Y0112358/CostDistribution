@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# 研究輸出（可重產生；快取 data_cache* 需 commit，勿忽略）
+output/
+
+# Node
+node_modules/
+dist/
+
+# 編輯器/本地設定
+.claude/

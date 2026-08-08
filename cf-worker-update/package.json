@@ -1,0 +1,12 @@
+{
+  "name": "theme-rotation-update-worker",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250501.0",
+    "wrangler": "^4.0.0"
+  }
+}

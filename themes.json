@@ -1,0 +1,26 @@
+{
+  "benchmark": "SPY",
+  "settings": {
+    "lookback_days": 365,
+    "cmf_window": 20,
+    "rs_ratio_sma": 20,
+    "rs_momentum_sma": 10,
+    "weights": {
+      "money": 0.30,
+      "strength": 0.40,
+      "breadth": 0.30
+    },
+    "d1_internal": {"dollar_volume_share": 0.6, "cmf": 0.4},
+    "d2_internal": {"rs_ratio": 0.5, "rs_momentum": 0.5}
+  },
+  "themes": {
+    "記憶體":  {"type": "basket", "tickers": ["MU", "SNDK", "WDC", "STX"]},
+    "光通訊":  {"type": "basket", "tickers": ["COHR", "LITE", "AAOI", "CIEN", "FN"]},
+    "半導體/AI": {"type": "etf", "tickers": ["SMH"]},
+    "雲端":    {"type": "etf", "tickers": ["SKYY"]},
+    "國防":    {"type": "etf", "tickers": ["ITA"]},
+    "核能/鈾": {"type": "etf", "tickers": ["URA"]},
+    "比特幣礦工": {"type": "etf", "tickers": ["WGMI"]},
+    "資安":    {"type": "etf", "tickers": ["HACK"]}
+  }
+}

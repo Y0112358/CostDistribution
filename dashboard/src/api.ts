@@ -1,0 +1,32 @@
+import type { HistoryDaily, Intraday1w, LatestRow, Meta, RrgData, StockDaily, StockIntraday, ThemeConfig } from './types'
+
+async function j<T>(f: string): Promise<T> {
+  const r = await fetch(`data/${f}`)
+  if (!r.ok) throw new Error(`${f}: HTTP ${r.status}`)
+  return r.json() as Promise<T>
+}
+
+export interface Loaded {
+  meta: Meta
+  themesConfig: { benchmark: string; themes: Record<string, ThemeConfig> }
+  history: HistoryDaily
+  rrg: RrgData
+  latest: LatestRow[]
+  stockDaily: StockDaily
+  intraday: Intraday1w | null
+  stockIntraday: StockIntraday | null
+}
+
+export async function loadDashboard(): Promise<Loaded> {
+  const [meta, themesConfig, history, rrg, latest, stockDaily, intraday, stockIntraday] = await Promise.all([
+    j<Meta>('meta.json'),
+    j<{ benchmark: string; themes: Record<string, ThemeConfig> }>('themes.json'),
+    j<HistoryDaily>('history_daily.json'),
+    j<RrgData>('rrg.json'),
+    j<LatestRow[]>('latest.json'),
+    j<StockDaily>('stock_daily.json'),
+    j<Intraday1w>('intraday_1w.json').catch(() => null),
+    j<StockIntraday>('stock_intraday.json').catch(() => null),
+  ])
+  return { meta, themesConfig, history, rrg, latest, stockDaily, intraday, stockIntraday }
+}
