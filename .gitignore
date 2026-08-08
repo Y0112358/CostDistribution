@@ -11,3 +11,8 @@ dist/
 
 # 編輯器/本地設定
 .claude/
+
+# 機密檔案（含真實憑證，永不 commit）
+Keys.txt
+Token.txt
+SecretKeys.txt
