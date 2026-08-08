@@ -10,6 +10,8 @@ import YearlyPanel from './components/YearlyPanel'
 import RRGChart from './components/RRGChart'
 import type { RrgTF } from './components/RRGChart'
 import ThemeDrawer from './components/ThemeDrawer'
+import ThemeFilter from './components/ThemeFilter'
+import DataLegend from './components/DataLegend'
 
 type Tab = 'dashboard' | 'yearly'
 interface Sel {
@@ -28,6 +30,16 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('dashboard')
   const [rrgTf, setRrgTf] = useState<RrgTF>('1m')
   const [sel, setSel] = useState<Sel | null>(null)
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+
+  const toggleTheme = useCallback((name: string) => {
+    setHidden((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -111,20 +123,40 @@ export default function App() {
 
       {tab === 'dashboard' ? (
         <div className="space-y-3">
+          <ThemeFilter
+            themes={themes}
+            hidden={hidden}
+            onToggle={toggleTheme}
+            onShowAll={() => setHidden(new Set())}
+            onHideAll={() => setHidden(new Set(themes))}
+            colorOf={colorOf}
+          />
           <RankTable rows={data.latest} onSelect={(theme) => setSel({ theme, tf: '1m' })} />
-          <TimeframeRow data={data} colorOf={colorOf} onSelect={(theme, tf) => setSel({ theme, tf })} />
+          <TimeframeRow data={data} colorOf={colorOf} hidden={hidden} onSelect={(theme, tf) => setSel({ theme, tf })} />
           <RRGChart
             rrg={data.rrg}
             tf={rrgTf}
             onTf={setRrgTf}
             themes={themes}
             colorOf={colorOf}
+            hidden={hidden}
             onSelect={(theme) => setSel({ theme, tf: rrgTf })}
           />
+          <DataLegend themesConfig={data.themesConfig} colorOf={colorOf} />
           <p className="text-center text-[11px] text-slate-600">點圖上的線或排名列 → 查看該主題的分數與成分股明細</p>
         </div>
       ) : (
-        <YearlyPanel data={data} colorOf={colorOf} onSelect={(theme) => setSel({ theme, tf: '1y' })} />
+        <>
+          <ThemeFilter
+            themes={themes}
+            hidden={hidden}
+            onToggle={toggleTheme}
+            onShowAll={() => setHidden(new Set())}
+            onHideAll={() => setHidden(new Set(themes))}
+            colorOf={colorOf}
+          />
+          <YearlyPanel data={data} colorOf={colorOf} hidden={hidden} onSelect={(theme) => setSel({ theme, tf: '1y' })} />
+        </>
       )}
 
       {sel && (

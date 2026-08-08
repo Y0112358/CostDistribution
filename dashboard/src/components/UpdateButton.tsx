@@ -5,7 +5,7 @@ type State = 'idle' | 'pending' | 'ok' | 'error'
 const UPDATE_URL = (import.meta.env.VITE_UPDATE_URL as string | undefined)?.trim() || ''
 const ACTIONS_URL =
   (import.meta.env.VITE_ACTIONS_URL as string | undefined)?.trim() ||
-  'https://github.com/OWNER/REPO/actions/workflows/dashboard.yml'
+  'https://github.com/Y0112358/CostDistribution/actions/workflows/dashboard.yml'
 
 export default function UpdateButton() {
   const [state, setState] = useState<State>('idle')

@@ -80,9 +80,12 @@ export default function ThemeDrawer({ theme, tf, data, onClose, onTf }: Props) {
           </button>
         </div>
 
-        <div className="flex gap-2 px-4 py-2 text-[11px] text-slate-500">
+        <div className="flex flex-wrap gap-2 px-4 py-2 text-[11px] text-slate-500">
           <span className="rounded bg-slate-800 px-2 py-0.5">綜合 = 0.30×D1 + 0.40×D2 + 0.30×D3</span>
           {isIntra && <span className="rounded bg-slate-800 px-2 py-0.5">5m 盤中</span>}
+          <span className="rounded bg-slate-800 px-2 py-0.5">
+            成分股：{data.themesConfig.themes[theme]?.tickers.join(', ') ?? '—'}
+          </span>
         </div>
 
         {/* body */}

@@ -11,16 +11,17 @@ interface Props {
   onTf: (tf: RrgTF) => void
   themes: string[]
   colorOf: (name: string) => string
+  hidden: Set<string>
   onSelect: (theme: string) => void
 }
 
 const TF_LABEL: Record<RrgTF, string> = { '1m': '近 1 月', '2w': '近 2 週', '1w': '近 1 週' }
 
-export default function RRGChart({ rrg, tf, onTf, themes, colorOf, onSelect }: Props) {
+export default function RRGChart({ rrg, tf, onTf, themes, colorOf, hidden, onSelect }: Props) {
   const option = useMemo<EChartsOption>(() => {
     const entry = rrg[tf]
     const series: any[] = []
-    themes.forEach((th) => {
+    themes.filter((t) => !hidden.has(t)).forEach((th) => {
       const xs = entry.rs_ratio[th] ?? []
       const ys = entry.rs_momentum[th] ?? []
       const pts: [number, number][] = []
@@ -88,7 +89,7 @@ export default function RRGChart({ rrg, tf, onTf, themes, colorOf, onSelect }: P
       ],
       series,
     }
-  }, [rrg, tf, themes, colorOf])
+  }, [rrg, tf, themes, colorOf, hidden])
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">

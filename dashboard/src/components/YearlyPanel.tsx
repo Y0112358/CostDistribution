@@ -7,15 +7,17 @@ import type { Loaded } from '../api'
 interface Props {
   data: Loaded
   colorOf: (name: string) => string
+  hidden: Set<string>
   onSelect: (theme: string) => void
 }
 
-export default function YearlyPanel({ data, colorOf, onSelect }: Props) {
+export default function YearlyPanel({ data, colorOf, hidden, onSelect }: Props) {
   const option = useMemo<EChartsOption>(() => {
     const labels = data.history.dates
+    const visibleThemes = data.history.themes.filter((t) => !hidden.has(t))
     return {
       backgroundColor: 'transparent',
-      color: data.history.themes.map((t) => colorOf(t)),
+      color: visibleThemes.map((t) => colorOf(t)),
       tooltip: {
         trigger: 'axis',
         backgroundColor: '#111827',
@@ -48,7 +50,7 @@ export default function YearlyPanel({ data, colorOf, onSelect }: Props) {
         { type: 'inside', throttle: 40 },
         { type: 'slider', height: 14, bottom: 4, borderColor: '#374151', backgroundColor: '#111827' },
       ],
-      series: data.history.themes.map((t) => ({
+      series: visibleThemes.map((t) => ({
         name: t,
         type: 'line',
         data: sma(data.history.composite[t], 20),
@@ -58,7 +60,7 @@ export default function YearlyPanel({ data, colorOf, onSelect }: Props) {
         animation: false,
       })),
     }
-  }, [data, colorOf])
+  }, [data, colorOf, hidden])
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
