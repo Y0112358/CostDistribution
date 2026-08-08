@@ -52,7 +52,9 @@ jobs:
             echo "資料無變更，跳過 commit"
           else
             git add data_cache data_cache_intraday dashboard/public/data
-            git commit -m "chore: update dashboard data [skip ci]"
+            git commit -m "chore: update dashboard data [skip ci]" || true
+            # 使用者可能同時在 push → 先 rebase 再 push，避免非 fast-forward 失敗
+            git pull --rebase --autostash origin main || true
             git push
           fi
 
