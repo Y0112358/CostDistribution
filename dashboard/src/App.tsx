@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { loadDashboard } from './api'
 import type { Loaded } from './api'
 import type { TF } from './types'
 import { makeColorOf } from './colors'
+import { useUpdateData } from './useUpdate'
 import UpdateButton from './components/UpdateButton'
 import RankTable from './components/RankTable'
 import TimeframeRow from './components/TimeframeRow'
@@ -21,7 +22,9 @@ interface Sel {
 
 function fmtTs(s: string | null): string {
   if (!s) return '—'
-  return s.replace('T', ' ').slice(0, 16)
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s
+  return d.toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 export default function App() {
@@ -31,6 +34,13 @@ export default function App() {
   const [rrgTf, setRrgTf] = useState<RrgTF>('1m')
   const [sel, setSel] = useState<Sel | null>(null)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [autoUpdate, setAutoUpdate] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('autoUpdate') !== 'off'
+    } catch {
+      return true
+    }
+  })
 
   const toggleTheme = useCallback((name: string) => {
     setHidden((prev) => {
@@ -41,19 +51,49 @@ export default function App() {
     })
   }, [])
 
-  useEffect(() => {
-    let alive = true
-    loadDashboard()
-      .then((d) => {
-        if (alive) setData(d)
-      })
-      .catch((e) => {
-        if (alive) setError(String(e?.message ?? e))
-      })
-    return () => {
-      alive = false
+  const load = useCallback(async () => {
+    try {
+      const d = await loadDashboard()
+      setData(d)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     }
   }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  // 共用更新流程：refreshData = 就地更新資料（背景模式用）
+  const { state: updateState, runUpdate } = useUpdateData(load)
+
+  const toggleAuto = useCallback(() => {
+    setAutoUpdate((v) => {
+      const nv = !v
+      try {
+        localStorage.setItem('autoUpdate', nv ? 'on' : 'off')
+      } catch {
+        /* ignore */
+      }
+      return nv
+    })
+  }, [])
+
+  // 背景每小時自動更新（頁面開啟期間；就地更新，不重整頁面）
+  useEffect(() => {
+    if (!autoUpdate) return
+    const id = setInterval(() => {
+      void runUpdate('inplace')
+    }, 60 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [autoUpdate, runUpdate])
+
+  // 下次自動更新時間（每小時）
+  const nextAuto = useMemo(() => {
+    const d = new Date(Date.now() + 60 * 60 * 1000)
+    return d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+  }, [data?.meta.generated_at])
 
   const colorOf = useCallback((name: string) => makeColorOf(data?.meta.themes ?? [])(name), [data])
 
@@ -89,13 +129,26 @@ export default function App() {
             資料至 {data.meta.data_daily_through}
             {data.meta.intraday_last_ts ? ` · 盤中至 ${data.meta.intraday_last_ts} · 生成 ${fmtTs(data.meta.generated_at)}` : ''}
             {' '}· 基準 {data.themesConfig.benchmark}
+            {autoUpdate && ` · 下次自動更新約 ${nextAuto}`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {data.meta.intraday_fresh && (
             <span className="rounded-full bg-emerald-900/50 px-2 py-0.5 text-[11px] text-emerald-300">盤中資料新鮮</span>
           )}
-          <UpdateButton />
+          {updateState === 'updating' && (
+            <span className="animate-pulse text-[11px] text-slate-400">更新中…</span>
+          )}
+          <button
+            onClick={toggleAuto}
+            title="開啟後，頁面開著期間每小時自動更新資料"
+            className={`rounded-full px-2 py-0.5 text-[11px] transition-colors ${
+              autoUpdate ? 'bg-emerald-900/50 text-emerald-300' : 'bg-slate-800 text-slate-500'
+            }`}
+          >
+            每小時自動更新 {autoUpdate ? 'ON' : 'OFF'}
+          </button>
+          <UpdateButton state={updateState} onUpdate={() => void runUpdate('reload')} />
         </div>
       </header>
 

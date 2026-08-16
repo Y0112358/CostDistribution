@@ -111,7 +111,8 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
     stock_daily = _export_stock_daily(cfg, frames)
 
     meta = {
-        "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
+        # UTC 時區感知：瀏覽器 Date.parse 才能正確解析（naive UTC 會被當本地時間）
+        "generated_at": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"),
         "themes": themes,
         "data_daily_through": str(sc["latest"].date()) if hasattr(sc["latest"], "date") else str(sc["latest"]),
         "daily_fresh": ds.daily_is_fresh(tickers[0]),
