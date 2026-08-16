@@ -33,6 +33,7 @@ export default function ThemeDrawer({ theme, tf, data, onClose, onTf }: Props) {
     d1: cols(series.d1)[i],
     d2: cols(series.d2)[i],
     d3: cols(series.d3)[i],
+    d4: cols(series.d4)[i],
     rsr: cols(series.rsr)[i],
     rsm: cols(series.rsm)[i],
     brd: showBreadth ? cols(series.breadth ?? [])[i] : null,
@@ -90,6 +91,7 @@ export default function ThemeDrawer({ theme, tf, data, onClose, onTf }: Props) {
                     <th className="px-2 py-1.5 text-right font-medium">D1資金</th>
                     <th className="px-2 py-1.5 text-right font-medium">D2強度</th>
                     <th className="px-2 py-1.5 text-right font-medium">D3一致</th>
+                    <th className="px-2 py-1.5 text-right font-medium">D4絕對</th>
                     <th className="px-2 py-1.5 text-right font-medium">RS-Ratio</th>
                     <th className="px-2 py-1.5 text-right font-medium">RS-Mom</th>
                     {showBreadth && <th className="px-2 py-1.5 text-right font-medium">一致%</th>}
@@ -103,6 +105,7 @@ export default function ThemeDrawer({ theme, tf, data, onClose, onTf }: Props) {
                       <td className="px-2 py-1 text-right text-slate-300">{fmt(r.d1)}</td>
                       <td className="px-2 py-1 text-right text-slate-300">{fmt(r.d2)}</td>
                       <td className="px-2 py-1 text-right text-slate-300">{fmt(r.d3)}</td>
+                      <td className="px-2 py-1 text-right text-slate-300">{fmt(r.d4)}</td>
                       <td className="px-2 py-1 text-right text-slate-300">{fmt(r.rsr)}</td>
                       <td className="px-2 py-1 text-right text-slate-300">{fmt(r.rsm)}</td>
                       {showBreadth && <td className="px-2 py-1 text-right text-slate-300">{fmt(r.brd)}</td>}

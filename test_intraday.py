@@ -29,7 +29,8 @@ def make_cfg():
         "benchmark": "SPY",
         "settings": {
             "cmf_window": 20, "rs_ratio_sma": 20, "rs_momentum_sma": 10,
-            "weights": {"money": 0.3, "strength": 0.4, "breadth": 0.3},
+            "abs_strength_scale": 2,
+            "weights": {"money": 0.25, "strength": 0.30, "breadth": 0.25, "absolute": 0.20},
             "d1_internal": {"dollar_volume_share": 0.6, "cmf": 0.4},
             "d2_internal": {"rs_ratio": 0.5, "rs_momentum": 0.5},
         },
@@ -232,6 +233,16 @@ def test_intraday_rrg_finite_and_ordering():
     assert np.isfinite(p_r.to_numpy()).all(), "p_rsr 含 NaN/inf"
     assert np.isfinite(p_m.to_numpy()).all(), "p_rsm 含 NaN/inf"
     assert p_r.iloc[-1]["A"] > p_r.iloc[-1]["B"] > p_r.iloc[-1]["C"], "A 應最強、C 最弱"
+
+
+def test_etf_breadth_neutral_daily_and_intraday():
+    daily, intra, dates, intra_days = make_synthetic()
+    cfg = make_cfg()
+    cfg["themes"]["C"] = {"type": "etf", "tickers": ["c1"]}  # C 改為 ETF 單標的
+    sc = rotation.compute_scores(cfg, daily)
+    assert (sc["d3"]["C"].dropna() == 50.0).all(), f"日線 ETF 主題 D3 應中性 50, got {sc['d3']['C'].unique()}"
+    sc_i = idy.compute_intraday_scores(cfg, daily, intra)
+    assert (sc_i["d3"]["C"].dropna() == 50.0).all(), f"盤中 ETF 主題 D3 應中性 50, got {sc_i['d3']['C'].unique()}"
 
 
 def test_missing_daily_bar_does_not_crash():

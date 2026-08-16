@@ -137,6 +137,16 @@ def test_dollar_volume():
     assert (indicators.dollar_volume(close, vol) == [1000.0, 2000.0]).all()
 
 
+def test_absolute_strength_mapping():
+    rs = pd.DataFrame({"t1": [100.0, 110.0, 90.0], "t2": [125.0, 75.0, 100.0]})
+    d4 = indicators.absolute_strength(rs, scale=2)
+    assert abs(d4.iloc[0]["t1"] - 50.0) < 1e-9, f"RS=100 應 50, got {d4.iloc[0]['t1']}"
+    assert abs(d4.iloc[1]["t1"] - 70.0) < 1e-9, f"RS=110 應 70, got {d4.iloc[1]['t1']}"
+    assert abs(d4.iloc[2]["t1"] - 30.0) < 1e-9, f"RS=90 應 30, got {d4.iloc[2]['t1']}"
+    assert d4.iloc[0]["t2"] == 100.0, "RS=125 封頂 100"
+    assert d4.iloc[1]["t2"] == 0.0, "RS=75 封底 0"
+
+
 if __name__ == "__main__":
     for name in [k for k in globals() if k.startswith("test_")]:
         check(name, globals()[name])

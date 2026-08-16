@@ -5,10 +5,12 @@
     "cmf_window": 20,
     "rs_ratio_sma": 20,
     "rs_momentum_sma": 10,
+    "abs_strength_scale": 2,
     "weights": {
-      "money": 0.30,
-      "strength": 0.40,
-      "breadth": 0.30
+      "money": 0.25,
+      "strength": 0.30,
+      "breadth": 0.25,
+      "absolute": 0.20
     },
     "d1_internal": {"dollar_volume_share": 0.6, "cmf": 0.4},
     "d2_internal": {"rs_ratio": 0.5, "rs_momentum": 0.5}

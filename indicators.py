@@ -26,7 +26,7 @@ def chaikin_money_flow(
 
 
 def dollar_volume(close: pd.Series, volume: pd.Series) -> pd.Series:
-    """成交額代理：調整後收盤 × 原始量。"""
+    """成交額代理：原始收盤 × 原始量（呼叫方傳 raw close，避免股利調整污染）。"""
     return close * volume
 
 
@@ -90,3 +90,13 @@ def cross_sectional_pct(df: pd.DataFrame) -> pd.DataFrame:
     rank = df.rank(axis=1)
     n = df.notna().sum(axis=1).replace(0, np.nan)
     return (rank - 1).div(n - 1, axis=0) * 100.0
+
+
+def absolute_strength(rs_ratio: pd.DataFrame, scale: float = 2.0) -> pd.DataFrame:
+    """D4 絕對強度：RS-Ratio 原始值線性映射到 0-100。
+
+    >100 代表相對大盤真強、<100 真弱；scale 決定敏感度。
+    RS-Ratio=100→50（中性）、110→70、90→30；偏離 25 封頂/封底。
+    補 cross-sectional 相對排名看不出「絕對」強弱的不足。
+    """
+    return np.clip(50.0 + (rs_ratio - 100.0) * scale, 0.0, 100.0)

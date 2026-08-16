@@ -169,7 +169,10 @@ def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
         rs = ind.relative_strength(pi, bench_adj, s["rs_ratio_sma"], s["rs_momentum_sma"])
         rsr[name] = rs["rs_ratio"]
         rsm[name] = rs["rs_momentum"]
-        brd[name] = ind.breadth_series(c_adj, ret_window=20)["overall"]
+        if theme.get("type") == "etf":
+            brd[name] = pd.Series(50.0, index=idx)  # ETF 無成分股廣度 → 中性
+        else:
+            brd[name] = ind.breadth_series(c_adj, ret_window=20)["overall"]
 
     dvol_df = pd.DataFrame(dvol, index=idx).reindex(idx)
     share = dvol_df.div(dvol_df.sum(axis=1), axis=0)
@@ -187,13 +190,21 @@ def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
     d1 = s["d1_internal"]["dollar_volume_share"] * p_share + s["d1_internal"]["cmf"] * p_cmf
     d2 = s["d2_internal"]["rs_ratio"] * p_rsr + s["d2_internal"]["rs_momentum"] * p_rsm
     d3 = brd_df
-    w = s["weights"]
-    composite = w["money"] * d1 + w["strength"] * d2 + w["breadth"] * d3
+    # D4 絕對強度：RS-Ratio 原始值映射（>100 真強、<100 真弱），補相對排名看不出絕對強弱
+    scale = s.get("abs_strength_scale", 2)
+    d4 = ind.absolute_strength(rsr_df, scale)
+    w = s.get("weights", {})
+    composite = (
+        w.get("money", 0.25) * d1
+        + w.get("strength", 0.30) * d2
+        + w.get("breadth", 0.25) * d3
+        + w.get("absolute", 0.20) * d4
+    )
 
     latest = composite.dropna(how="all").index[-1]
     return {
         "latest": latest,
-        "composite": composite, "d1": d1, "d2": d2, "d3": d3,
+        "composite": composite, "d1": d1, "d2": d2, "d3": d3, "d4": d4,
         "share": share, "hhi": hhi, "rsr": rsr_df, "rsm": rsm_df,
         "p_rsr": p_rsr, "p_rsm": p_rsm, "brd": brd_df,
     }
@@ -234,6 +245,7 @@ def build_report(sc: dict, cfg: dict) -> pd.DataFrame:
             "D1資金": sc["d1"].loc[latest, name],
             "D2強度": sc["d2"].loc[latest, name],
             "D3一致": sc["d3"].loc[latest, name],
+            "D4絕對": sc["d4"].loc[latest, name],
             "成交額佔比%": sc["share"].loc[latest, name] * 100,
             "RS-Ratio": sc["rsr"].loc[latest, name],
             "RS-Momentum": sc["rsm"].loc[latest, name],

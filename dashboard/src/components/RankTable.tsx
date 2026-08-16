@@ -20,6 +20,7 @@ export default function RankTable({ rows, onSelect }: Props) {
               <th className="px-3 py-2 text-right font-medium">D1 資金</th>
               <th className="px-3 py-2 text-right font-medium">D2 強度</th>
               <th className="px-3 py-2 text-right font-medium">D3 一致</th>
+              <th className="px-3 py-2 text-right font-medium">D4 絕對</th>
               <th className="px-3 py-2 text-right font-medium">成交額%</th>
               <th className="px-3 py-2 text-right font-medium">RS-Ratio</th>
               <th className="px-3 py-2 text-right font-medium">RS-Mom</th>
@@ -42,6 +43,7 @@ export default function RankTable({ rows, onSelect }: Props) {
                 <td className="px-3 py-1.5 text-right text-slate-300">{fmt(r.d1)}</td>
                 <td className="px-3 py-1.5 text-right text-slate-300">{fmt(r.d2)}</td>
                 <td className="px-3 py-1.5 text-right text-slate-300">{fmt(r.d3)}</td>
+                <td className="px-3 py-1.5 text-right text-slate-300">{fmt(r.d4)}</td>
                 <td className="px-3 py-1.5 text-right text-slate-300">{fmt(r.dvol_share)}</td>
                 <td className="px-3 py-1.5 text-right text-slate-300">{fmt(r.rs_ratio)}</td>
                 <td className="px-3 py-1.5 text-right text-slate-300">{fmt(r.rs_momentum)}</td>

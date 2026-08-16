@@ -261,7 +261,10 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
             cmf_live = pd.concat(
                 [live_cmf(c["mfv"][t][m], c["vol"][t][m], theme_high[t], theme_low[t], theme_raw[t], theme_vol[t], s["cmf_window"])
                  for t in tk], axis=1).mean(axis=1)
-            brd_live = live_breadth(c["daily_adj"][m], theme_adj)
+            if themes[name].get("type") == "etf":
+                brd_live = pd.Series(50.0, index=bar_idx)  # ETF 無成分股廣度 → 中性
+            else:
+                brd_live = live_breadth(c["daily_adj"][m], theme_adj)
             dvol_live = live_dvol_share(theme_raw, theme_vol).sum(axis=1)
 
             share_df[name] = dvol_live
@@ -286,11 +289,19 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
         d1 = s["d1_internal"]["dollar_volume_share"] * p_share + s["d1_internal"]["cmf"] * p_cmf
         d2 = s["d2_internal"]["rs_ratio"] * p_rsr + s["d2_internal"]["rs_momentum"] * p_rsm
         d3 = brd_df
-        w = s["weights"]
-        composite = w["money"] * d1 + w["strength"] * d2 + w["breadth"] * d3
+        # D4 絕對強度：RS-Ratio 原始值映射（>100 真強、<100 真弱）
+        scale = s.get("abs_strength_scale", 2)
+        d4 = ind.absolute_strength(rsr_df, scale)
+        w = s.get("weights", {})
+        composite = (
+            w.get("money", 0.25) * d1
+            + w.get("strength", 0.30) * d2
+            + w.get("breadth", 0.25) * d3
+            + w.get("absolute", 0.20) * d4
+        )
         day_frames.append({
             "day": D, "index": bar_idx,
-            "composite": composite, "d1": d1, "d2": d2, "d3": d3,
+            "composite": composite, "d1": d1, "d2": d2, "d3": d3, "d4": d4,
             "share": share, "cmf": cmf_df, "rsr": rsr_df, "rsm": rsm_df, "breadth": brd_df, "hhi": hhi,
         })
 
@@ -303,7 +314,7 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
 
     return {
         "days": days,
-        "composite": merge("composite"), "d1": merge("d1"), "d2": merge("d2"), "d3": merge("d3"),
+        "composite": merge("composite"), "d1": merge("d1"), "d2": merge("d2"), "d3": merge("d3"), "d4": merge("d4"),
         "share": merge("share"), "cmf": merge("cmf"), "rsr": merge("rsr"), "rsm": merge("rsm"),
         "breadth": merge("breadth"), "hhi": merge("hhi"),
         "day_frames": day_frames,

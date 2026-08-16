@@ -74,6 +74,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
         "d1": _col_major(sc["d1"].loc[dates]),
         "d2": _col_major(sc["d2"].loc[dates]),
         "d3": _col_major(sc["d3"].loc[dates]),
+        "d4": _col_major(sc["d4"].loc[dates]),
         "rsr": _col_major(sc["rsr"].loc[dates]),
         "rsm": _col_major(sc["rsm"].loc[dates]),
     }
@@ -100,6 +101,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
             "d1": float(row["D1資金"]),
             "d2": float(row["D2強度"]),
             "d3": float(row["D3一致"]),
+            "d4": float(row["D4絕對"]),
             "dvol_share": float(row["成交額佔比%"]),
             "rs_ratio": float(row["RS-Ratio"]),
             "rs_momentum": float(row["RS-Momentum"]),
@@ -131,6 +133,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
             "d1": _col_major(sc_i["d1"]),
             "d2": _col_major(sc_i["d2"]),
             "d3": _col_major(sc_i["d3"]),
+            "d4": _col_major(sc_i["d4"]),
             "rsr": _col_major(sc_i["rsr"]),
             "rsm": _col_major(sc_i["rsm"]),
             "breadth": _col_major(sc_i["breadth"]),
