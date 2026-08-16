@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { EChartsOption } from 'echarts'
 import Chart from './Chart'
+import FullscreenChart from './FullscreenChart'
 import type { SeriesDef } from '../slice'
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function CompositeChart({ title, subtitle, labels, series, colorOf, onSelect, height = 340 }: Props) {
+  const [full, setFull] = useState(false)
   const option = useMemo<EChartsOption>(() => {
     const zoom = labels.length > 40
     return {
@@ -65,17 +67,37 @@ export default function CompositeChart({ title, subtitle, labels, series, colorO
     }
   }, [labels, series, colorOf])
 
+  const clickEvents = onSelect ? { click: (p: any) => p?.seriesName && onSelect(p.seriesName) } : undefined
+  const zoomable = labels.length > 40
+
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
-      <div className="mb-1 flex items-baseline justify-between px-1">
+      <div className="mb-1 flex items-center justify-between px-1">
         <span className="text-sm font-semibold text-slate-200">{title}</span>
-        {subtitle && <span className="text-[11px] text-slate-500">{subtitle}</span>}
+        <div className="flex items-center gap-2">
+          {subtitle && <span className="text-[11px] text-slate-500">{subtitle}</span>}
+          {zoomable && (
+            <button
+              onClick={() => setFull(true)}
+              title="放大到全螢幕"
+              className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100"
+            >
+              ⤢ 放大
+            </button>
+          )}
+        </div>
       </div>
-      <Chart
-        height={height}
-        option={option}
-        onEvents={onSelect ? { click: (p) => p?.seriesName && onSelect(p.seriesName) } : undefined}
-      />
+      <Chart height={height} option={option} onEvents={clickEvents} />
+
+      {full && (
+        <FullscreenChart
+          title={title}
+          subtitle={subtitle}
+          option={option}
+          onEvents={clickEvents}
+          onClose={() => setFull(false)}
+        />
+      )}
     </div>
   )
 }

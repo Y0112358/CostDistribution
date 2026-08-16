@@ -5,7 +5,7 @@ import type { EChartsOption } from 'echarts'
 interface Props {
   option: EChartsOption
   onEvents?: Record<string, (params: any) => void>
-  height?: number
+  height?: number | string
   className?: string
 }
 
