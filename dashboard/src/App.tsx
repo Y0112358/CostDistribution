@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { loadDashboard } from './api'
-import type { Loaded } from './api'
-import type { TF } from './types'
+import type { DashboardData, TF } from './types'
 import { makeColorOf } from './colors'
 import { useUpdateData } from './useUpdate'
 import UpdateButton from './components/UpdateButton'
@@ -28,7 +27,7 @@ function fmtTs(s: string | null): string {
 }
 
 export default function App() {
-  const [data, setData] = useState<Loaded | null>(null)
+  const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('dashboard')
   const [rrgTf, setRrgTf] = useState<RrgTF>('1m')

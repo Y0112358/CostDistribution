@@ -2,10 +2,10 @@ import { useMemo } from 'react'
 import type { EChartsOption } from 'echarts'
 import Chart from './Chart'
 import { sma } from '../slice'
-import type { Loaded } from '../api'
+import type { DashboardData } from '../types'
 
 interface Props {
-  data: Loaded
+  data: DashboardData
   colorOf: (name: string) => string
   hidden: Set<string>
   onSelect: (theme: string) => void

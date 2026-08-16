@@ -1,24 +1,9 @@
 import type { LatestRow } from '../types'
+import { change, changeCls, fmt } from '../format'
 
 interface Props {
   rows: LatestRow[]
   onSelect: (theme: string) => void
-}
-
-function fmt(v: number | null, digits = 1): string {
-  if (v == null || Number.isNaN(v)) return '—'
-  return v.toFixed(digits)
-}
-
-function change(v: number | null): string {
-  if (v == null || Number.isNaN(v)) return '—'
-  const s = v > 0 ? '+' : ''
-  return `${s}${v.toFixed(1)}`
-}
-
-function changeCls(v: number | null): string {
-  if (v == null || Number.isNaN(v) || v === 0) return 'text-slate-400'
-  return v > 0 ? 'text-emerald-400' : 'text-red-400'
 }
 
 export default function RankTable({ rows, onSelect }: Props) {

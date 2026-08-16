@@ -1,4 +1,14 @@
-import type { HistoryDaily, Intraday1w, LatestRow, Meta, RrgData, StockDaily, StockIntraday, ThemeConfig } from './types'
+import type {
+  DashboardData,
+  HistoryDaily,
+  Intraday1w,
+  LatestRow,
+  Meta,
+  RrgData,
+  StockDaily,
+  StockIntraday,
+  ThemeConfig,
+} from './types'
 
 async function j<T>(f: string): Promise<T> {
   const r = await fetch(`data/${f}`)
@@ -6,18 +16,7 @@ async function j<T>(f: string): Promise<T> {
   return r.json() as Promise<T>
 }
 
-export interface Loaded {
-  meta: Meta
-  themesConfig: { benchmark: string; themes: Record<string, ThemeConfig> }
-  history: HistoryDaily
-  rrg: RrgData
-  latest: LatestRow[]
-  stockDaily: StockDaily
-  intraday: Intraday1w | null
-  stockIntraday: StockIntraday | null
-}
-
-export async function loadDashboard(): Promise<Loaded> {
+export async function loadDashboard(): Promise<DashboardData> {
   const [meta, themesConfig, history, rrg, latest, stockDaily, intraday, stockIntraday] = await Promise.all([
     j<Meta>('meta.json'),
     j<{ benchmark: string; themes: Record<string, ThemeConfig> }>('themes.json'),

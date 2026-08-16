@@ -1,10 +1,9 @@
-import type { TF } from '../types'
-import type { Loaded } from '../api'
+import type { DashboardData, TF } from '../types'
 import { dailyComposite, intradayComposite } from '../slice'
 import CompositeChart from './CompositeChart'
 
 interface Props {
-  data: Loaded
+  data: DashboardData
   colorOf: (name: string) => string
   hidden: Set<string>
   onSelect: (theme: string, tf: TF) => void

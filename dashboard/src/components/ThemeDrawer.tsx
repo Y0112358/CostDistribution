@@ -1,11 +1,11 @@
-import type { Loaded } from '../api'
-import type { TF } from '../types'
+import type { DashboardData, TF } from '../types'
 import { themeSeriesFor } from '../slice'
+import { fmt, fmtVol } from '../format'
 
 interface Props {
   theme: string
   tf: TF
-  data: Loaded
+  data: DashboardData
   onClose: () => void
   onTf: (tf: TF) => void
 }
@@ -16,18 +16,6 @@ const TFS: { tf: TF; label: string }[] = [
   { tf: '1w', label: '1週' },
   { tf: '1y', label: '1年' },
 ]
-
-function fmt(v: number | null, digits = 1): string {
-  if (v == null || Number.isNaN(v)) return '—'
-  return v.toFixed(digits)
-}
-
-function fmtVol(v: number | null): string {
-  if (v == null || Number.isNaN(v)) return '—'
-  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`
-  return `${Math.round(v)}`
-}
 
 export default function ThemeDrawer({ theme, tf, data, onClose, onTf }: Props) {
   const series = themeSeriesFor(data, tf, theme)
@@ -143,7 +131,7 @@ export default function ThemeDrawer({ theme, tf, data, onClose, onTf }: Props) {
   )
 }
 
-function TickerDailyTable({ ticker, data, theme }: { ticker: string; data: Loaded; theme: string }) {
+function TickerDailyTable({ ticker, data, theme }: { ticker: string; data: DashboardData; theme: string }) {
   const st = data.stockDaily[theme]?.[ticker]
   if (!st) return null
   const rows = st.dates.map((d, i) => ({
@@ -188,9 +176,9 @@ function TickerDailyTable({ ticker, data, theme }: { ticker: string; data: Loade
                 <td className="px-2 py-1 text-right text-slate-300">{fmt(r.ma50, 2)}</td>
                 <td className="px-2 py-1 text-right text-slate-300">{fmt(r.ma200, 2)}</td>
                 <td className="px-2 py-1 text-right text-slate-300">{fmt(r.cmf, 2)}</td>
-                <td className="px-2 py-1 text-center">{r.above[0] ? <Flag good /> : <Flag />}</td>
-                <td className="px-2 py-1 text-center">{r.above[1] ? <Flag good /> : <Flag />}</td>
-                <td className="px-2 py-1 text-center">{r.above[2] ? <Flag good /> : <Flag />}</td>
+                <td className="px-2 py-1 text-center"><Flag good={r.above[0]} /></td>
+                <td className="px-2 py-1 text-center"><Flag good={r.above[1]} /></td>
+                <td className="px-2 py-1 text-center"><Flag good={r.above[2]} /></td>
               </tr>
             ))}
           </tbody>
@@ -200,7 +188,7 @@ function TickerDailyTable({ ticker, data, theme }: { ticker: string; data: Loade
   )
 }
 
-function TickerIntraTable({ ticker, data, theme }: { ticker: string; data: Loaded; theme: string }) {
+function TickerIntraTable({ ticker, data, theme }: { ticker: string; data: DashboardData; theme: string }) {
   const st = data.stockIntraday?.[theme]?.[ticker]
   if (!st) return null
   const start = Math.max(0, st.ts.length - 39)

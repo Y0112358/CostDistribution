@@ -94,11 +94,20 @@ def daily_coverage(ticker: str) -> tuple:
 def daily_is_fresh(ticker: str, today=None) -> bool:
     """最後一列 ≥ 今天-2 天即視為新鮮（涵蓋週末；交易日盤中昨收也算新鮮）。"""
     today = pd.Timestamp.today().date() if today is None else today
-    first, last = daily_coverage(ticker)
+    _, last = daily_coverage(ticker)
     if last is None:
         return False
     cutoff = (pd.Timestamp(today) - pd.Timedelta(days=2)).date()
     return last >= cutoff
+
+
+def _extract_single(data, ticker: str) -> pd.DataFrame | None:
+    """yfinance 單檔下載回傳（可能 MultiIndex 或單層欄位）→ 該 ticker 的 DataFrame。"""
+    if isinstance(data.columns, pd.MultiIndex):
+        return _extract_frames(data).get(ticker)
+    new = data.copy()
+    new.columns = [str(c).upper() for c in new.columns]
+    return new
 
 
 def fetch_daily_gap(ticker: str, force: bool = False) -> None:
@@ -108,7 +117,7 @@ def fetch_daily_gap(ticker: str, force: bool = False) -> None:
     if force or not p.exists():
         period = "1y"
     else:
-        first, last = daily_coverage(ticker)
+        _, last = daily_coverage(ticker)
         gap = (pd.Timestamp.today().date() - pd.Timestamp(last).date()).days
         if gap <= 2:
             return
@@ -117,11 +126,7 @@ def fetch_daily_gap(ticker: str, force: bool = False) -> None:
     if data is None or (isinstance(data, pd.DataFrame) and data.empty):
         print(f"[資料] {ticker} 抓取({period})無新資料，保留快取")
         return
-    if isinstance(data.columns, pd.MultiIndex):
-        new = _extract_frames(data).get(ticker)
-    else:
-        new = data.copy()
-        new.columns = [str(c).upper() for c in new.columns]
+    new = _extract_single(data, ticker)
     if new is None or new.empty:
         return
     _merge_save(p, new, DAILY_MAX_ROWS)
