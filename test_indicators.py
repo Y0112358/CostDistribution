@@ -147,6 +147,40 @@ def test_absolute_strength_mapping():
     assert d4.iloc[1]["t2"] == 0.0, "RS=75 封底 0"
 
 
+def test_price_volume_alignment_direction():
+    n = 40
+    dates = pd.date_range("2025-01-01", periods=n, freq="B")
+    # 價漲量增 → alignment 正（D5a > 50）
+    up_price = pd.Series(np.linspace(100, 150, n), index=dates)
+    up_vol = pd.Series(np.linspace(1e6, 2e6, n), index=dates)
+    a1 = indicators.price_volume_alignment(up_price, up_vol, window=10)
+    assert a1.iloc[-1] > 50.0, f"價漲量增應 >50, got {a1.iloc[-1]}"
+
+    # 價跌量增 → alignment 負（D5a < 50）
+    down_price = pd.Series(np.linspace(100, 50, n), index=dates)
+    a2 = indicators.price_volume_alignment(down_price, up_vol, window=10)
+    assert a2.iloc[-1] < 50.0, f"價跌量增應 <50, got {a2.iloc[-1]}"
+
+    # 量縮（成交量平坦）→ 動能減弱，D5a 接近 50
+    flat_vol = pd.Series(np.full(n, 1e6), index=dates)
+    a3 = indicators.price_volume_alignment(up_price, flat_vol, window=10)
+    assert abs(a3.iloc[-1] - 50.0) < 15.0, f"量縮應接近中性 50, got {a3.iloc[-1]}"
+
+
+def test_turnover_change_direction():
+    n = 40
+    dates = pd.date_range("2025-01-01", periods=n, freq="B")
+    # 換手率遞減（籌碼鎖定）→ turnover_change < 1 → D5b 高分
+    dec = pd.Series(np.linspace(0.05, 0.01, n), index=dates)
+    b1 = indicators.turnover_change(dec, window=20)
+    assert b1.iloc[-1] > 50.0, f"換手減速應 >50, got {b1.iloc[-1]}"
+
+    # 換手率遞增（籌碼鬆動）→ D5b 低分
+    inc = pd.Series(np.linspace(0.01, 0.05, n), index=dates)
+    b2 = indicators.turnover_change(inc, window=20)
+    assert b2.iloc[-1] < 50.0, f"換手加速應 <50, got {b2.iloc[-1]}"
+
+
 if __name__ == "__main__":
     for name in [k for k in globals() if k.startswith("test_")]:
         check(name, globals()[name])

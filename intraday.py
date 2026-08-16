@@ -193,7 +193,8 @@ def theme_index_from_base(adj_df: pd.DataFrame, base: pd.Series) -> pd.Series:
 
 # ---------------------------------------------------------------- main computation
 def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
-                            intraday_frames: dict[str, pd.DataFrame]) -> dict:
+                            intraday_frames: dict[str, pd.DataFrame],
+                            daily_d5: pd.DataFrame | None = None) -> dict:
     bench = cfg["benchmark"]
     s = cfg["settings"]
     themes = cfg["themes"]
@@ -207,6 +208,20 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
     bench_daily_idx = bench_adj_daily / bench_base * 100.0
     bench_intraday_idx = bench_intraday["Adj Close"] / bench_base * 100.0
     bench_idx = bench_daily_idx.index
+
+    # D5 籌碼是「慢變數」：盤中用日線最新值（常數），保證收斂。
+    # 未傳 daily_d5 時（測試）內部只算 D5a 量價確認。
+    if daily_d5 is not None:
+        d5_last = daily_d5.iloc[-1]  # 每主題最新日線 D5
+    else:
+        d5a = {}
+        for name, theme in themes.items():
+            tk = theme["tickers"]
+            daily_adj = pd.DataFrame({t: daily_frames[t]["Adj Close"] for t in tk}).reindex(bench_idx)
+            pi = ind.theme_price_index(daily_adj)
+            vol = pd.DataFrame({t: daily_frames[t]["Volume"].reindex(bench_idx) for t in tk}).sum(axis=1)
+            d5a[name] = ind.price_volume_alignment(pi, vol, s.get("alignment_window", 10))
+        d5_last = pd.DataFrame(d5a).iloc[-1]
 
     # 每主題日頻上下文（完整序列，之後依 day 切片）。
     # 所有序列對齊基準 index：成分股缺一天時以 NaN 補位，避免 boolean mask 長度不符
@@ -280,16 +295,19 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
         # D4 絕對強度：RS-Ratio 原始值映射（>100 真強、<100 真弱）
         scale = s.get("abs_strength_scale", 2)
         d4 = ind.absolute_strength(rsr_df, scale)
+        # D5 籌碼：慢變數，盤中用日線最新值（常數）
+        d5 = pd.DataFrame([d5_last] * len(bar_idx), index=bar_idx, columns=themes.keys())
         w = s.get("weights", {})
         composite = (
             w.get("money", 0.25) * d1
-            + w.get("strength", 0.30) * d2
-            + w.get("breadth", 0.25) * d3
+            + w.get("strength", 0.20) * d2
+            + w.get("breadth", 0.20) * d3
             + w.get("absolute", 0.20) * d4
+            + w.get("chip", 0.20) * d5
         )
         day_frames.append({
             "day": D, "index": bar_idx,
-            "composite": composite, "d1": d1, "d2": d2, "d3": d3, "d4": d4,
+            "composite": composite, "d1": d1, "d2": d2, "d3": d3, "d4": d4, "d5": d5,
             "share": share, "rsr": rsr_df, "rsm": rsm_df, "breadth": brd_df, "hhi": hhi,
         })
 
@@ -302,7 +320,7 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
 
     return {
         "days": days,
-        "composite": merge("composite"), "d1": merge("d1"), "d2": merge("d2"), "d3": merge("d3"), "d4": merge("d4"),
+        "composite": merge("composite"), "d1": merge("d1"), "d2": merge("d2"), "d3": merge("d3"), "d4": merge("d4"), "d5": merge("d5"),
         "share": merge("share"), "rsr": merge("rsr"), "rsm": merge("rsm"),
         "breadth": merge("breadth"), "hhi": merge("hhi"),
         "day_frames": day_frames,

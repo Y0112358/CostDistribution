@@ -63,8 +63,11 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
     print(f"[匯出] {len(tickers)} 檔 ticker，{len(themes)} 主題")
     frames = ds.ensure_daily(tickers, refresh=refresh, from_cache=from_cache)
 
+    # ---- 換手率需流通股數（容錯：抓不到則 D5 只用量價背離）----
+    shares = ds.ensure_shares(tickers, refresh=refresh, from_cache=from_cache)
+
     # ---- 日線分數（1y 歷史）----
-    sc = rot.compute_scores(cfg, frames)
+    sc = rot.compute_scores(cfg, frames, shares)
     valid = sc["composite"].dropna(how="all")
     dates = valid.index
     history_daily = {
@@ -75,6 +78,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
         "d2": _col_major(sc["d2"].loc[dates]),
         "d3": _col_major(sc["d3"].loc[dates]),
         "d4": _col_major(sc["d4"].loc[dates]),
+        "d5": _col_major(sc["d5"].loc[dates]),
         "rsr": _col_major(sc["rsr"].loc[dates]),
         "rsm": _col_major(sc["rsm"].loc[dates]),
     }
@@ -102,6 +106,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
             "d2": float(row["D2強度"]),
             "d3": float(row["D3一致"]),
             "d4": float(row["D4絕對"]),
+            "d5": float(row["D5籌碼"]),
             "dvol_share": float(row["成交額佔比%"]),
             "rs_ratio": float(row["RS-Ratio"]),
             "rs_momentum": float(row["RS-Momentum"]),
@@ -122,7 +127,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
 
     if not no_intraday:
         intra = ds.ensure_intraday(tickers, refresh=refresh, from_cache=from_cache)
-        sc_i = idy.compute_intraday_scores(cfg, frames, intra)
+        sc_i = idy.compute_intraday_scores(cfg, frames, intra, daily_d5=sc["d5"])
         p_ri, p_mi = idy.compute_intraday_rrg(cfg, frames, intra, 5, 3)
 
         cidx = sc_i["composite"].index
@@ -134,6 +139,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
             "d2": _col_major(sc_i["d2"]),
             "d3": _col_major(sc_i["d3"]),
             "d4": _col_major(sc_i["d4"]),
+            "d5": _col_major(sc_i["d5"]),
             "rsr": _col_major(sc_i["rsr"]),
             "rsm": _col_major(sc_i["rsm"]),
             "breadth": _col_major(sc_i["breadth"]),

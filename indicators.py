@@ -100,3 +100,30 @@ def absolute_strength(rs_ratio: pd.DataFrame, scale: float = 2.0) -> pd.DataFram
     補 cross-sectional 相對排名看不出「絕對」強弱的不足。
     """
     return np.clip(50.0 + (rs_ratio - 100.0) * scale, 0.0, 100.0)
+
+
+def price_volume_alignment(price: pd.Series, volume: pd.Series, window: int = 10) -> pd.Series:
+    """D5a 量價確認（0-100）：價動量與量動量的「同向性」。
+
+    ret   = 價格 window 日報酬
+    dvol  = 近 window 日成交量 / 前 window 日成交量 − 1
+    alignment = tanh(ret×10) × tanh(dvol)
+    價漲量增→+1（強勢籌碼集中）、價跌量增→−1（恐慌派發）、量縮→0（動能減弱）。
+    D5a = 50 + 50×alignment，純 OHLCV、正交於量水準（D1）與價水準（D2/D4）。
+    """
+    ret = price.pct_change(window)
+    vol_sum = volume.rolling(window).sum()
+    prev_vol = vol_sum.shift(window)
+    dvol = vol_sum / prev_vol - 1.0
+    alignment = np.tanh(ret * 10.0) * np.tanh(dvol)
+    return 50.0 + 50.0 * alignment
+
+
+def turnover_change(turnover: pd.Series, window: int = 20) -> pd.Series:
+    """D5b 換手率變化（0-100）：換手率 vs 其 window 日均值。
+
+    turnover_change = turnover / SMA(turnover, window)，
+    >1 換手加速（籌碼鬆動）→ 低分、<1 減速（籌碼鎖定）→ 高分。
+    """
+    tc = turnover / turnover.rolling(window).mean()
+    return np.clip(50.0 + (1.0 - tc) * 50.0, 0.0, 100.0)

@@ -15,6 +15,7 @@ export interface HistoryDaily {
   d2: Record<string, NumArr>
   d3: Record<string, NumArr>
   d4: Record<string, NumArr>
+  d5: Record<string, NumArr>
   rsr: Record<string, NumArr>
   rsm: Record<string, NumArr>
 }
@@ -27,6 +28,7 @@ export interface Intraday1w {
   d2: Record<string, NumArr>
   d3: Record<string, NumArr>
   d4: Record<string, NumArr>
+  d5: Record<string, NumArr>
   rsr: Record<string, NumArr>
   rsm: Record<string, NumArr>
   breadth: Record<string, NumArr>
@@ -52,6 +54,7 @@ export interface LatestRow {
   d2: number
   d3: number
   d4: number
+  d5: number
   dvol_share: number
   rs_ratio: number
   rs_momentum: number

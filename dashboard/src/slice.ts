@@ -33,6 +33,7 @@ export interface ThemeSeries {
   d2: NumArr
   d3: NumArr
   d4: NumArr
+  d5: NumArr
   rsr: NumArr
   rsm: NumArr
   breadth: NumArr | null
@@ -49,6 +50,7 @@ export function themeSeriesFor(d: DashboardData, tf: TF, theme: string): ThemeSe
       d2: i.d2[theme],
       d3: i.d3[theme],
       d4: i.d4[theme],
+      d5: i.d5[theme],
       rsr: i.rsr[theme],
       rsm: i.rsm[theme],
       breadth: i.breadth[theme] ?? null,
@@ -66,6 +68,7 @@ export function themeSeriesFor(d: DashboardData, tf: TF, theme: string): ThemeSe
     d2: slice(h.d2[theme]),
     d3: slice(h.d3[theme]),
     d4: slice(h.d4[theme]),
+    d5: slice(h.d5[theme]),
     rsr: slice(h.rsr[theme]),
     rsm: slice(h.rsm[theme]),
     breadth: null,

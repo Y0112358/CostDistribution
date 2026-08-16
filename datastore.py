@@ -21,6 +21,7 @@ import pandas as pd
 BASE = Path(__file__).resolve().parent
 DAILY_DIR = BASE / "data_cache"
 INTRA_DIR = BASE / "data_cache_intraday"
+SHARES_DIR = BASE / "data_cache_shares"
 DAILY_STAMP_V = "v2-rawadj"
 INTRA_FRESH_MIN = 15
 DAILY_MAX_ROWS = 400          # ~1.6 年日線，足夠 1y 圖 + 200MA 暖機
@@ -194,3 +195,41 @@ def ensure_intraday(tickers: list[str], refresh: bool = False, from_cache: bool 
     elif refresh or not intraday_is_fresh():
         fetch_intraday_batch(tickers)
     return {t: _load_csv(INTRA_DIR / f"{t}.csv", tz=ET) for t in tickers}
+
+
+# ---------------------------------------------------------------- shares（換手率）
+def _fetch_shares(ticker: str) -> pd.Series | None:
+    """抓單檔流通股數歷史序列。失敗回 None（容錯，不崩）。"""
+    import yfinance as yf
+    try:
+        s = yf.Ticker(ticker).get_shares_full(start="2024-01-01")
+        if s is None or len(s) == 0:
+            return None
+        s = s.astype(float)
+        s.index = pd.to_datetime(s.index).tz_localize(None)  # 去時區，CSV 讀回才正確
+        s = s[~s.index.duplicated(keep="last")].sort_index()
+        return s
+    except Exception as e:
+        print(f"[股份] {ticker} 抓取失敗: {e}")
+        return None
+
+
+def ensure_shares(tickers: list[str], refresh: bool = False, from_cache: bool = False) -> dict[str, pd.Series | None]:
+    """抓流通股數到 data_cache_shares/{ticker}.csv，容錯回傳 {ticker: Series|None}。"""
+    SHARES_DIR.mkdir(exist_ok=True)
+    out = {}
+    for t in tickers:
+        p = SHARES_DIR / f"{t}.csv"
+        if from_cache or (p.exists() and not refresh):
+            if p.exists():
+                s = pd.read_csv(p, index_col=0, parse_dates=True).iloc[:, 0]
+                s.index = pd.to_datetime(s.index)  # 強制 datetime index
+                out[t] = s
+            else:
+                out[t] = None
+            continue
+        s = _fetch_shares(t)
+        if s is not None:
+            s.to_csv(p)
+        out[t] = s
+    return out

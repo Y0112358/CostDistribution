@@ -148,6 +148,7 @@ def main() -> None:
         "D2相對強度": sc["d2"],
         "D3一致性": sc["d3"],
         "D4絕對強度": sc["d4"],
+        "D5籌碼": sc["d5"],
     }
 
     print(f"\n── 回測 IC（預測未來超額報酬，Spearman rank IC）──")

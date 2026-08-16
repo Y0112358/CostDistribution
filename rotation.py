@@ -143,18 +143,21 @@ def build_theme_frames(frames: dict[str, pd.DataFrame], theme: dict, bench: str)
     )
 
 
-def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
+def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame], shares: dict | None = None):
     bench = cfg["benchmark"]
     s = cfg["settings"]
     themes = cfg["themes"]
     idx = frames[bench].index
     bench_adj = frames[bench]["Adj Close"]
+    align_window = s.get("alignment_window", 10)
 
     dvol = {}          # theme → 成交額 series（原始價 × 量）
     vol_sum = {}       # theme → 成交量 series（純量，成分股成交量之和）
     rsr = {}           # theme → RS-Ratio（調整價）
     rsm = {}           # theme → RS-Momentum
     brd = {}           # theme → breadth overall（調整價）
+    d5a = {}           # theme → 量價確認（純 OHLCV）
+    d5b = {}           # theme → 換手率變化（需 shares）
     for name, theme in themes.items():
         h, l, c_raw, c_adj, v, pi = build_theme_frames(frames, theme, bench)
         dvol[name] = ind.theme_dollar_volume(c_raw, v)
@@ -166,6 +169,11 @@ def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
             brd[name] = pd.Series(50.0, index=idx)  # ETF 無成分股廣度 → 中性
         else:
             brd[name] = ind.breadth_series(c_adj, ret_window=20)["overall"]
+        # D5a 量價確認：主題等權指數報酬 vs 成交量動能
+        d5a[name] = ind.price_volume_alignment(pi, vol_sum[name], align_window)
+        # D5b 換手率變化（需 shares，容錯）
+        if shares is not None:
+            d5b[name] = _theme_turnover_change(theme, v, shares, idx)
 
     dvol_df = pd.DataFrame(dvol, index=idx).reindex(idx)
     share = dvol_df.div(dvol_df.sum(axis=1), axis=0)
@@ -187,21 +195,49 @@ def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
     # D4 絕對強度：RS-Ratio 原始值映射（>100 真強、<100 真弱），補相對排名看不出絕對強弱
     scale = s.get("abs_strength_scale", 2)
     d4 = ind.absolute_strength(rsr_df, scale)
+    # D5 籌碼：量價確認 + 換手率變化（換手率對 ETF/缺失設中性 50，與 breadth 對稱）
+    d5a_df = pd.DataFrame(d5a, index=idx)
+    d5b_df = pd.DataFrame(index=idx)
+    for name in themes:
+        d5b_df[name] = d5b[name] if (name in d5b and d5b[name] is not None) else 50.0
+    d5i = s.get("d5_internal", {"alignment": 0.6, "turnover": 0.4})
+    d5 = d5i.get("alignment", 0.6) * d5a_df + d5i.get("turnover", 0.4) * d5b_df
     w = s.get("weights", {})
     composite = (
         w.get("money", 0.25) * d1
-        + w.get("strength", 0.30) * d2
-        + w.get("breadth", 0.25) * d3
+        + w.get("strength", 0.20) * d2
+        + w.get("breadth", 0.20) * d3
         + w.get("absolute", 0.20) * d4
+        + w.get("chip", 0.20) * d5
     )
 
     latest = composite.dropna(how="all").index[-1]
     return {
         "latest": latest,
-        "composite": composite, "d1": d1, "d2": d2, "d3": d3, "d4": d4,
+        "composite": composite, "d1": d1, "d2": d2, "d3": d3, "d4": d4, "d5": d5,
         "share": share, "hhi": hhi, "rsr": rsr_df, "rsm": rsm_df,
         "p_rsr": p_rsr, "p_rsm": p_rsm, "brd": brd_df,
     }
+
+
+def _theme_turnover_change(theme: dict, vols: pd.DataFrame, shares: dict, idx) -> pd.Series | None:
+    """主題換手率變化 = 成分股等權平均換手率的換手變化。shares 缺失 → None。"""
+    tickers = theme["tickers"]
+    turnovers = {}
+    for t in tickers:
+        sh = shares.get(t) if isinstance(shares, dict) else None
+        if sh is None:
+            continue
+        sh_re = sh.reindex(idx).ffill()
+        vol_re = vols[t].reindex(idx)
+        to = vol_re / sh_re
+        to = to.replace([np.inf, -np.inf], np.nan)
+        turnovers[t] = to
+    if not turnovers:
+        return None
+    to_df = pd.DataFrame(turnovers, index=idx)
+    mean_to = to_df.mean(axis=1)
+    return ind.turnover_change(mean_to)
 
 
 def tidy_history(sc: dict, cfg: dict) -> pd.DataFrame:
@@ -240,6 +276,7 @@ def build_report(sc: dict, cfg: dict) -> pd.DataFrame:
             "D2強度": sc["d2"].loc[latest, name],
             "D3一致": sc["d3"].loc[latest, name],
             "D4絕對": sc["d4"].loc[latest, name],
+            "D5籌碼": sc["d5"].loc[latest, name],
             "成交額佔比%": sc["share"].loc[latest, name] * 100,
             "RS-Ratio": sc["rsr"].loc[latest, name],
             "RS-Momentum": sc["rsm"].loc[latest, name],

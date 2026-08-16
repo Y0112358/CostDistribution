@@ -29,10 +29,11 @@ def make_cfg():
         "benchmark": "SPY",
         "settings": {
             "cmf_window": 20, "rs_ratio_sma": 20, "rs_momentum_sma": 10,
-            "abs_strength_scale": 2,
-            "weights": {"money": 0.25, "strength": 0.30, "breadth": 0.25, "absolute": 0.20},
+            "abs_strength_scale": 2, "alignment_window": 10,
+            "weights": {"money": 0.25, "strength": 0.15, "breadth": 0.20, "absolute": 0.20, "chip": 0.20},
             "d1_internal": {"dollar_volume_share": 0.6, "volume_share": 0.4},
             "d2_internal": {"rs_ratio": 0.5, "rs_momentum": 0.5},
+            "d5_internal": {"alignment": 0.6, "turnover": 0.4},
         },
         "themes": {
             "A": {"type": "basket", "tickers": ["a1", "a2"]},
