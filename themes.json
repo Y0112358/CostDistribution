@@ -9,9 +9,9 @@
     "weights": {
       "money": 0.25,
       "strength": 0.15,
-      "breadth": 0.20,
-      "absolute": 0.20,
-      "chip": 0.20
+      "breadth": 0.25,
+      "absolute": 0.25,
+      "chip": 0.10
     },
     "d1_internal": {"dollar_volume_share": 0.6, "volume_share": 0.4},
     "d2_internal": {"rs_ratio": 0.5, "rs_momentum": 0.5},
