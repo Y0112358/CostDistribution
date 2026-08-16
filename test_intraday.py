@@ -31,7 +31,7 @@ def make_cfg():
             "cmf_window": 20, "rs_ratio_sma": 20, "rs_momentum_sma": 10,
             "abs_strength_scale": 2,
             "weights": {"money": 0.25, "strength": 0.30, "breadth": 0.25, "absolute": 0.20},
-            "d1_internal": {"dollar_volume_share": 0.6, "cmf": 0.4},
+            "d1_internal": {"dollar_volume_share": 0.6, "volume_share": 0.4},
             "d2_internal": {"rs_ratio": 0.5, "rs_momentum": 0.5},
         },
         "themes": {
@@ -190,6 +190,18 @@ def test_share_sums_one():
     sc_i = idy.compute_intraday_scores(cfg, daily, intra)
     s = sc_i["share"].sum(axis=1)
     assert np.allclose(s, 1.0, atol=1e-9), f"share 總和應=1, max diff {float((s-1).abs().max())}"
+
+
+def test_d1_uses_volume_share():
+    # 成交額份額與成交量份額分離：成交量份額是純量（不含價）
+    daily, intra, dates, intra_days = make_synthetic()
+    cfg = make_cfg()
+    sc = rotation.compute_scores(cfg, daily)
+    # 日線成交額份額跨主題總和 = 1
+    assert np.allclose(sc["share"].sum(axis=1), 1.0, atol=1e-9)
+    # D1 有限且介於 0-100
+    assert np.isfinite(sc["d1"].to_numpy()).all()
+    assert (sc["d1"].to_numpy().min() >= 0) and (sc["d1"].to_numpy().max() <= 100)
 
 
 def test_composite_converges_daily():

@@ -143,13 +143,6 @@ def build_theme_frames(frames: dict[str, pd.DataFrame], theme: dict, bench: str)
     )
 
 
-def theme_cmf(high_df, low_df, close_df, vol_df, window):
-    return pd.concat(
-        [ind.chaikin_money_flow(high_df[c], low_df[c], close_df[c], vol_df[c], window) for c in close_df.columns],
-        axis=1,
-    ).mean(axis=1)
-
-
 def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
     bench = cfg["benchmark"]
     s = cfg["settings"]
@@ -158,14 +151,14 @@ def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
     bench_adj = frames[bench]["Adj Close"]
 
     dvol = {}          # theme → 成交額 series（原始價 × 量）
-    cmf = {}           # theme → CMF（原始高低收量）
+    vol_sum = {}       # theme → 成交量 series（純量，成分股成交量之和）
     rsr = {}           # theme → RS-Ratio（調整價）
     rsm = {}           # theme → RS-Momentum
     brd = {}           # theme → breadth overall（調整價）
     for name, theme in themes.items():
         h, l, c_raw, c_adj, v, pi = build_theme_frames(frames, theme, bench)
         dvol[name] = ind.theme_dollar_volume(c_raw, v)
-        cmf[name] = theme_cmf(h, l, c_raw, v, s["cmf_window"])
+        vol_sum[name] = v.sum(axis=1)
         rs = ind.relative_strength(pi, bench_adj, s["rs_ratio_sma"], s["rs_momentum_sma"])
         rsr[name] = rs["rs_ratio"]
         rsm[name] = rs["rs_momentum"]
@@ -177,17 +170,18 @@ def compute_scores(cfg: dict, frames: dict[str, pd.DataFrame]):
     dvol_df = pd.DataFrame(dvol, index=idx).reindex(idx)
     share = dvol_df.div(dvol_df.sum(axis=1), axis=0)
     hhi = (share**2).sum(axis=1)
-    cmf_df = pd.DataFrame(cmf, index=idx)
+    vol_df = pd.DataFrame(vol_sum, index=idx)
+    vol_share = vol_df.div(vol_df.sum(axis=1), axis=0)
     rsr_df = pd.DataFrame(rsr, index=idx)
     rsm_df = pd.DataFrame(rsm, index=idx)
     brd_df = pd.DataFrame(brd, index=idx)
 
     p_share = ind.cross_sectional_pct(share)
-    p_cmf = ind.cross_sectional_pct(cmf_df)
+    p_vol_share = ind.cross_sectional_pct(vol_share)
     p_rsr = ind.cross_sectional_pct(rsr_df)
     p_rsm = ind.cross_sectional_pct(rsm_df)
 
-    d1 = s["d1_internal"]["dollar_volume_share"] * p_share + s["d1_internal"]["cmf"] * p_cmf
+    d1 = s["d1_internal"]["dollar_volume_share"] * p_share + s["d1_internal"]["volume_share"] * p_vol_share
     d2 = s["d2_internal"]["rs_ratio"] * p_rsr + s["d2_internal"]["rs_momentum"] * p_rsm
     d3 = brd_df
     # D4 絕對強度：RS-Ratio 原始值映射（>100 真強、<100 真弱），補相對排名看不出絕對強弱

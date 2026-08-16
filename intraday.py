@@ -217,19 +217,10 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
         daily_theme_idx = ind.theme_price_index(daily_adj)
         ratio = daily_theme_idx / bench_daily_idx
         rs = ind.relative_strength(daily_theme_idx, bench_daily_idx, s["rs_ratio_sma"], s["rs_momentum_sma"])
-        mfv = {}
-        vol = {}
-        for t in tk:
-            df = daily_frames[t].reindex(bench_idx)
-            rng = df["High"] - df["Low"]
-            mfm = np.where(rng > 0, ((df["Close"] - df["Low"]) - (df["High"] - df["Close"])) / rng.replace(0, np.nan), 0.0)
-            mfv[t] = pd.Series(mfm, index=bench_idx).fillna(0.0) * df["Volume"]
-            vol[t] = df["Volume"]
         bases = {t: daily_frames[t]["Adj Close"].dropna().iloc[0] for t in tk}
         ctx[name] = {
             "tickers": tk,
             "ratio": ratio, "rsr": rs["rs_ratio"],
-            "mfv": pd.DataFrame(mfv), "vol": pd.DataFrame(vol),
             "daily_adj": daily_adj, "bases": bases,
         }
 
@@ -243,32 +234,28 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
             continue
         all_bars.append(bar_idx)
 
-        share_df, cmf_df, rsr_df, rsm_df, brd_df = {}, {}, {}, {}, {}
+        share_df, vol_df, rsr_df, rsm_df, brd_df = {}, {}, {}, {}, {}
         for name, c in ctx.items():
             tk = c["tickers"]
             # 主題 5m 資料（對齊後）
             th = {t: int_aligned[t].loc[bar_idx] for t in tk}
             theme_adj = pd.DataFrame({t: th[t]["Adj Close"] for t in tk})
             theme_raw = pd.DataFrame({t: th[t]["Close"] for t in tk})
-            theme_high = pd.DataFrame({t: th[t]["High"] for t in tk})
-            theme_low = pd.DataFrame({t: th[t]["Low"] for t in tk})
             theme_vol = pd.DataFrame({t: th[t]["Volume"] for t in tk})
             base_s = pd.Series(c["bases"])
             theme_intraday_idx = theme_index_from_base(theme_adj, base_s)
 
             live_ratio = theme_intraday_idx / bench_intraday_idx.loc[bar_idx]
             rs_live = live_rs(c["ratio"][m], c["rsr"][m], live_ratio, s["rs_ratio_sma"], s["rs_momentum_sma"])
-            cmf_live = pd.concat(
-                [live_cmf(c["mfv"][t][m], c["vol"][t][m], theme_high[t], theme_low[t], theme_raw[t], theme_vol[t], s["cmf_window"])
-                 for t in tk], axis=1).mean(axis=1)
             if themes[name].get("type") == "etf":
                 brd_live = pd.Series(50.0, index=bar_idx)  # ETF 無成分股廣度 → 中性
             else:
                 brd_live = live_breadth(c["daily_adj"][m], theme_adj)
             dvol_live = live_dvol_share(theme_raw, theme_vol).sum(axis=1)
+            vol_live = theme_vol.sum(axis=1)  # 純量：成分股成交量之和
 
             share_df[name] = dvol_live
-            cmf_df[name] = cmf_live
+            vol_df[name] = vol_live
             rsr_df[name] = rs_live["rs_ratio_live"]
             rsm_df[name] = rs_live["rs_momentum_live"]
             brd_df[name] = brd_live
@@ -277,16 +264,17 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
         total = share_df.sum(axis=1)
         share = share_df.div(total, axis=0)
         hhi = (share**2).sum(axis=1)
-        cmf_df = pd.DataFrame(cmf_df, index=bar_idx)
+        vol_df = pd.DataFrame(vol_df, index=bar_idx)
+        vol_share = vol_df.div(vol_df.sum(axis=1), axis=0)
         rsr_df = pd.DataFrame(rsr_df, index=bar_idx)
         rsm_df = pd.DataFrame(rsm_df, index=bar_idx)
         brd_df = pd.DataFrame(brd_df, index=bar_idx)
 
         p_share = ind.cross_sectional_pct(share)
-        p_cmf = ind.cross_sectional_pct(cmf_df)
+        p_vol_share = ind.cross_sectional_pct(vol_share)
         p_rsr = ind.cross_sectional_pct(rsr_df)
         p_rsm = ind.cross_sectional_pct(rsm_df)
-        d1 = s["d1_internal"]["dollar_volume_share"] * p_share + s["d1_internal"]["cmf"] * p_cmf
+        d1 = s["d1_internal"]["dollar_volume_share"] * p_share + s["d1_internal"]["volume_share"] * p_vol_share
         d2 = s["d2_internal"]["rs_ratio"] * p_rsr + s["d2_internal"]["rs_momentum"] * p_rsm
         d3 = brd_df
         # D4 絕對強度：RS-Ratio 原始值映射（>100 真強、<100 真弱）
@@ -302,7 +290,7 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
         day_frames.append({
             "day": D, "index": bar_idx,
             "composite": composite, "d1": d1, "d2": d2, "d3": d3, "d4": d4,
-            "share": share, "cmf": cmf_df, "rsr": rsr_df, "rsm": rsm_df, "breadth": brd_df, "hhi": hhi,
+            "share": share, "rsr": rsr_df, "rsm": rsm_df, "breadth": brd_df, "hhi": hhi,
         })
 
     full_idx = pd.DatetimeIndex([])
@@ -315,7 +303,7 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
     return {
         "days": days,
         "composite": merge("composite"), "d1": merge("d1"), "d2": merge("d2"), "d3": merge("d3"), "d4": merge("d4"),
-        "share": merge("share"), "cmf": merge("cmf"), "rsr": merge("rsr"), "rsm": merge("rsm"),
+        "share": merge("share"), "rsr": merge("rsr"), "rsm": merge("rsm"),
         "breadth": merge("breadth"), "hhi": merge("hhi"),
         "day_frames": day_frames,
     }

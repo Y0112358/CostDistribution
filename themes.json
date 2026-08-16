@@ -12,7 +12,7 @@
       "breadth": 0.25,
       "absolute": 0.20
     },
-    "d1_internal": {"dollar_volume_share": 0.6, "cmf": 0.4},
+    "d1_internal": {"dollar_volume_share": 0.6, "volume_share": 0.4},
     "d2_internal": {"rs_ratio": 0.5, "rs_momentum": 0.5}
   },
   "themes": {
