@@ -91,12 +91,22 @@ export interface Meta {
   intraday_fresh: boolean
 }
 
+export type SignalLevel = 'warning' | 'danger' | 'success'
+
+export interface Signal {
+  theme: string
+  type: string
+  level: SignalLevel
+  text: string
+}
+
 export interface DashboardData {
   meta: Meta
   themesConfig: { benchmark: string; themes: Record<string, ThemeConfig> }
   history: HistoryDaily
   rrg: RrgData
   latest: LatestRow[]
+  signals: Signal[]
   stockDaily: StockDaily
   intraday: Intraday1w | null
   stockIntraday: StockIntraday | null

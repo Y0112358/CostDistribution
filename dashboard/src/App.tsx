@@ -12,6 +12,7 @@ import type { RrgTF } from './components/RRGChart'
 import ThemeDrawer from './components/ThemeDrawer'
 import ThemeFilter from './components/ThemeFilter'
 import DataLegend from './components/DataLegend'
+import SignalPanel from './components/SignalPanel'
 
 type Tab = 'dashboard' | 'yearly'
 interface Sel {
@@ -175,6 +176,7 @@ export default function App() {
 
       {tab === 'dashboard' ? (
         <div className="space-y-3">
+          <SignalPanel signals={data.signals} />
           <ThemeFilter
             themes={themes}
             hidden={hidden}

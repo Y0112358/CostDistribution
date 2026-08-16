@@ -1,10 +1,10 @@
 import type {
-  DashboardData,
   HistoryDaily,
   Intraday1w,
   LatestRow,
   Meta,
   RrgData,
+  Signal,
   StockDaily,
   StockIntraday,
   ThemeConfig,
@@ -16,16 +16,17 @@ async function j<T>(f: string): Promise<T> {
   return r.json() as Promise<T>
 }
 
-export async function loadDashboard(): Promise<DashboardData> {
-  const [meta, themesConfig, history, rrg, latest, stockDaily, intraday, stockIntraday] = await Promise.all([
+export async function loadDashboard() {
+  const [meta, themesConfig, history, rrg, latest, signals, stockDaily, intraday, stockIntraday] = await Promise.all([
     j<Meta>('meta.json'),
     j<{ benchmark: string; themes: Record<string, ThemeConfig> }>('themes.json'),
     j<HistoryDaily>('history_daily.json'),
     j<RrgData>('rrg.json'),
     j<LatestRow[]>('latest.json'),
+    j<Signal[]>('signals.json').catch(() => []),
     j<StockDaily>('stock_daily.json'),
     j<Intraday1w>('intraday_1w.json').catch(() => null),
     j<StockIntraday>('stock_intraday.json').catch(() => null),
   ])
-  return { meta, themesConfig, history, rrg, latest, stockDaily, intraday, stockIntraday }
+  return { meta, themesConfig, history, rrg, latest, signals, stockDaily, intraday, stockIntraday }
 }

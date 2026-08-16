@@ -24,6 +24,7 @@ import datastore as ds
 import indicators as ind
 import intraday as idy
 import rotation as rot
+import signals as sig
 
 BASE = Path(__file__).resolve().parent
 DATA_DIR = BASE / "dashboard" / "public" / "data"
@@ -158,6 +159,12 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
         meta["intraday_fresh"] = False
         meta["intraday_last_ts"] = None
 
+    # ---- 輪動訊號（sc 的 p_rsr/p_rsm 即 1M RRG 百分位）----
+    rrg_df = {
+        "1m": {"rs_ratio": sc["p_rsr"], "rs_momentum": sc["p_rsm"]},
+    }
+    signals = sig.detect_signals(sc, rrg_df, latest_json)
+
     # ---- 寫檔 ----
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     writes = {
@@ -166,6 +173,7 @@ def export_dashboard(cfg: dict, refresh: bool, from_cache: bool, no_intraday: bo
         "history_daily.json": history_daily,
         "rrg.json": rrg,
         "latest.json": latest_json,
+        "signals.json": signals,
         "stock_daily.json": stock_daily,
     }
     if intraday_1w is not None:
