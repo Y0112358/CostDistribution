@@ -234,6 +234,17 @@ def test_intraday_rrg_finite_and_ordering():
     assert p_r.iloc[-1]["A"] > p_r.iloc[-1]["B"] > p_r.iloc[-1]["C"], "A 應最強、C 最弱"
 
 
+def test_missing_daily_bar_does_not_crash():
+    # 成分股缺一天時，日頻上下文對齊基準後長度一致，boolean mask 不應崩
+    daily, intra, dates, intra_days = make_synthetic()
+    daily["a1"] = daily["a1"].iloc[1:]  # a1 比基準短一天
+    cfg = make_cfg()
+    sc_i = idy.compute_intraday_scores(cfg, daily, intra)
+    assert np.isfinite(sc_i["composite"].to_numpy()).all(), "缺資料不應崩"
+    p_r, p_m = idy.compute_intraday_rrg(cfg, daily, intra, 5, 3)
+    assert np.isfinite(p_r.to_numpy()).all(), "RRG 缺資料不應崩"
+
+
 def test_rrg_daily_1m_matches_compute_scores():
     daily, intra, dates, intra_days = make_synthetic()
     cfg = make_cfg()

@@ -206,24 +206,26 @@ def compute_intraday_scores(cfg: dict, daily_frames: dict[str, pd.DataFrame],
     bench_base = bench_adj_daily.iloc[0]
     bench_daily_idx = bench_adj_daily / bench_base * 100.0
     bench_intraday_idx = bench_intraday["Adj Close"] / bench_base * 100.0
+    bench_idx = bench_daily_idx.index
 
-    # 每主題日頻上下文（完整序列，之後依 day 切片）
+    # 每主題日頻上下文（完整序列，之後依 day 切片）。
+    # 所有序列對齊基準 index：成分股缺一天時以 NaN 補位，避免 boolean mask 長度不符
     ctx = {}
     for name, theme in themes.items():
         tk = theme["tickers"]
-        daily_adj = pd.DataFrame({t: daily_frames[t]["Adj Close"] for t in tk})
+        daily_adj = pd.DataFrame({t: daily_frames[t]["Adj Close"] for t in tk}).reindex(bench_idx)
         daily_theme_idx = ind.theme_price_index(daily_adj)
         ratio = daily_theme_idx / bench_daily_idx
         rs = ind.relative_strength(daily_theme_idx, bench_daily_idx, s["rs_ratio_sma"], s["rs_momentum_sma"])
         mfv = {}
         vol = {}
         for t in tk:
-            df = daily_frames[t]
+            df = daily_frames[t].reindex(bench_idx)
             rng = df["High"] - df["Low"]
             mfm = np.where(rng > 0, ((df["Close"] - df["Low"]) - (df["High"] - df["Close"])) / rng.replace(0, np.nan), 0.0)
-            mfv[t] = pd.Series(mfm, index=df.index).fillna(0.0) * df["Volume"]
+            mfv[t] = pd.Series(mfm, index=bench_idx).fillna(0.0) * df["Volume"]
             vol[t] = df["Volume"]
-        bases = {t: daily_frames[t]["Adj Close"].iloc[0] for t in tk}
+        bases = {t: daily_frames[t]["Adj Close"].dropna().iloc[0] for t in tk}
         ctx[name] = {
             "tickers": tk,
             "ratio": ratio, "rsr": rs["rs_ratio"],
@@ -323,15 +325,16 @@ def compute_intraday_rrg(cfg: dict, daily_frames: dict[str, pd.DataFrame],
     bench_base = bench_adj_daily.iloc[0]
     bench_daily_idx = bench_adj_daily / bench_base * 100.0
     bench_intraday_idx = bench_intraday["Adj Close"] / bench_base * 100.0
+    bench_idx = bench_daily_idx.index
 
     ctx = {}
     for name, theme in themes.items():
         tk = theme["tickers"]
-        daily_adj = pd.DataFrame({t: daily_frames[t]["Adj Close"] for t in tk})
+        daily_adj = pd.DataFrame({t: daily_frames[t]["Adj Close"] for t in tk}).reindex(bench_idx)
         daily_idx = ind.theme_price_index(daily_adj)
         ratio = daily_idx / bench_daily_idx
         rs = ind.relative_strength(daily_idx, bench_daily_idx, ratio_sma, momentum_sma)
-        bases = {t: daily_frames[t]["Adj Close"].iloc[0] for t in tk}
+        bases = {t: daily_frames[t]["Adj Close"].dropna().iloc[0] for t in tk}
         ctx[name] = {"tickers": tk, "ratio": ratio, "rsr": rs["rs_ratio"], "bases": bases}
 
     rsr_l, rsm_l = [], []

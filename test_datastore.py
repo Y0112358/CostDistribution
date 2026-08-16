@@ -91,9 +91,10 @@ def test_fetch_daily_fresh_no_call():
     with tempfile.TemporaryDirectory() as td:
         ds.DAILY_DIR = Path(td)
         ds.DAILY_DIR.mkdir(exist_ok=True)
-        # 資料到 2026-08-07（週五，真實今天 08-08 週六）→ 新鮮，不該抓
+        # 資料到最近交易日（今天往前）→ 新鮮，不該抓
+        today = pd.Timestamp.today().date()
         _write_daily(ds.DAILY_DIR / "AAA.csv",
-                     pd.bdate_range("2026-08-06", "2026-08-08"), [1.0])
+                     pd.bdate_range(end=pd.Timestamp(today), periods=3), [1.0])
         orig = ds._download
         def fake(*a, **k):
             raise AssertionError("新鮮快取不該觸發抓取")
@@ -138,8 +139,9 @@ def test_ensure_daily_refresh_and_from_cache():
     with tempfile.TemporaryDirectory() as td:
         ds.DAILY_DIR = Path(td)
         ds.DAILY_DIR.mkdir(exist_ok=True)
-        _write_daily(ds.DAILY_DIR / "AAA.csv",
-                     pd.bdate_range("2026-08-06", "2026-08-08"), [1.0])
+        today = pd.Timestamp.today().date()
+        dates = pd.bdate_range(end=pd.Timestamp(today), periods=4)
+        _write_daily(ds.DAILY_DIR / "AAA.csv", dates, [1.0])
         calls = []
         orig = ds._download
         def fake(*a, **k):
@@ -149,7 +151,7 @@ def test_ensure_daily_refresh_and_from_cache():
         try:
             frames = ds.ensure_daily(["AAA"])  # 新鮮 → 純快取
             assert calls == []
-            assert "AAA" in frames and len(frames["AAA"]) == 2
+            assert "AAA" in frames and len(frames["AAA"]) == len(dates)
             frames2 = ds.ensure_daily(["AAA"], from_cache=True)
             assert "AAA" in frames2
         finally:
