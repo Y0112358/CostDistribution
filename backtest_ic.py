@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 import datastore as ds
+import indicators as ind
 import rotation as rot
 
 BASE = Path(__file__).resolve().parent
@@ -47,6 +48,22 @@ def future_excess_return(cfg: dict, frames: dict, k: int) -> pd.DataFrame:
         rows[name] = pi.shift(-k) / pi - 1.0
     theme_future = pd.DataFrame(rows)
     return theme_future.sub(bench_future.reindex(theme_future.index), axis=0)
+
+
+def d2_with_windows(cfg: dict, frames: dict, ratio_sma: int, momentum_sma: int) -> pd.DataFrame:
+    """以指定 RS 平滑窗口重算 D2（相對強度，0.5×p_rsr + 0.5×p_rsm）。"""
+    bench = cfg["benchmark"]
+    bench_adj = frames[bench]["Adj Close"]
+    idx = frames[bench].index
+    rsr, rsm = {}, {}
+    for name, theme in cfg["themes"].items():
+        _, _, _, _, _, pi = rot.build_theme_frames(frames, theme, bench)
+        rs = ind.relative_strength(pi, bench_adj, ratio_sma, momentum_sma)
+        rsr[name] = rs["rs_ratio"]
+        rsm[name] = rs["rs_momentum"]
+    p_rsr = ind.cross_sectional_pct(pd.DataFrame(rsr, index=idx))
+    p_rsm = ind.cross_sectional_pct(pd.DataFrame(rsm, index=idx))
+    return 0.5 * p_rsr + 0.5 * p_rsm
 
 
 def rank_ic(score: pd.DataFrame, future: pd.DataFrame) -> np.ndarray:
@@ -85,9 +102,33 @@ def summarize(ics: np.ndarray, lag: int) -> dict:
     return {"n": n, "mean": mean, "std": std, "t": t, "pos_ratio": pos}
 
 
+def scan_rs_windows(cfg: dict, frames: dict) -> None:
+    """掃描 D2 的 ratio_sma × momentum_sma 組合，找短期 IC 最佳窗口。"""
+    print("\n── D2 RS 窗口掃描（找短期 IC 最佳的平滑窗口）──")
+    print("   ratio_sma × momentum_sma，對 IC(5) 與 IC(20) 的 mean/t-stat\n")
+    fut5 = future_excess_return(cfg, frames, 5)
+    fut20 = future_excess_return(cfg, frames, 20)
+    results = []
+    for ratio_sma in (5, 10, 15, 20):
+        for momentum_sma in (3, 5, 10):
+            d2 = d2_with_windows(cfg, frames, ratio_sma, momentum_sma)
+            s5 = summarize(rank_ic(d2, fut5), lag=5)
+            s20 = summarize(rank_ic(d2, fut20), lag=20)
+            results.append((ratio_sma, momentum_sma, s5, s20))
+            print(f"  rs={ratio_sma:2d} mom={momentum_sma:2d}  "
+                  f"IC(5)={s5['mean']:+.4f} (t={s5['t']:+5.2f})  "
+                  f"IC(20)={s20['mean']:+.4f} (t={s20['t']:+5.2f})")
+    # 依 IC(5) 排序（短期預測力優先，因 D2 短期不顯著是待解問題）
+    results.sort(key=lambda r: -(r[2]["mean"]))
+    best = results[0]
+    print(f"\n  短期 IC(5) 最佳：ratio_sma={best[0]}, momentum_sma={best[1]}  "
+          f"（IC(5)={best[2]['mean']:+.4f}, t={best[2]['t']:+.2f}）")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--refresh", action="store_true", help="強制重抓日線")
+    ap.add_argument("--scan-rs", action="store_true", help="掃描 D2 的 RS 平滑窗口")
     args = ap.parse_args()
 
     cfg = rot.load_config()
@@ -95,6 +136,10 @@ def main() -> None:
         t for th in cfg["themes"].values() for t in th["tickers"]]))
     print(f"[IC] {len(tickers)} 檔 ticker，{len(cfg['themes'])} 主題")
     frames = ds.ensure_daily(tickers, refresh=args.refresh, from_cache=not args.refresh)
+
+    if args.scan_rs:
+        scan_rs_windows(cfg, frames)
+        return
 
     sc = rot.compute_scores(cfg, frames)
     dims = {

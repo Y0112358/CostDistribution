@@ -7,7 +7,7 @@ interface Props {
 }
 
 const FORMULA: { name: string; text: string }[] = [
-  { name: '綜合分數', text: '0.25×D1資金 + 0.30×D2相對強度 + 0.25×D3一致性 + 0.20×D4絕對強度' },
+  { name: '綜合分數', text: '0.30×D1資金 + 0.20×D2相對強度 + 0.25×D3一致性 + 0.25×D4絕對強度' },
   { name: 'D1 資金權重', text: '0.60 × 成交額佔比(百分位) + 0.40 × 成交量佔比(百分位)' },
   { name: 'D2 族群強度', text: '0.50 × RS-Ratio(百分位) + 0.50 × RS-Momentum(百分位)' },
   { name: 'D3 一致性', text: '成分股站上 20/50/200 日均線比例 + 20 日正報酬比例（ETF 主題設中性 50）' },
